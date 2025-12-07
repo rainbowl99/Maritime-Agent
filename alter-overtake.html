@@ -1,0 +1,2704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maritime Traffic Separation - OVERTAKE Scenario</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            background-color: #1a1a1a;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            gap: 15px;
+            padding: 15px;
+            color: #E8E8E8;
+        }
+
+        .container {
+            display: flex;
+            gap: 15px;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Left: Map Section */
+        .map-section {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            flex: 0 0 auto;
+            height: 100%;
+            aspect-ratio: 1;
+            min-width: 500px;
+            max-width: 60%;
+        }
+
+        .map-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            border: 1px solid #404060;
+            flex-shrink: 0;
+            font-size: 13px;
+        }
+
+        .map-header h2 {
+            font-size: 16px;
+            color: #FFC000;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .ai-badge {
+            font-size: 10px;
+            padding: 3px 8px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 4px;
+            color: white;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .api-status {
+            font-size: 10px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .api-status.connected {
+            background: rgba(68, 221, 136, 0.2);
+            color: #44DD88;
+        }
+
+        .api-status.disconnected {
+            background: rgba(255, 68, 68, 0.2);
+            color: #FF4444;
+            cursor: pointer;
+        }
+
+        .status-indicator {
+            display: flex;
+            gap: 15px;
+            font-size: 12px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            box-shadow: 0 0 6px currentColor;
+            flex-shrink: 0;
+        }
+
+        .map-wrapper {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: stretch;
+            position: relative;
+            min-height: 0;
+        }
+
+        #mapCanvas {
+            background: linear-gradient(135deg, #0a0a15 0%, #15151f 100%);
+            border: 2px solid #404060;
+            border-radius: 8px;
+            cursor: crosshair;
+            display: block;
+            width: 100%;
+            height: 100%;
+            max-width: 100%;
+            max-height: 100%;
+            aspect-ratio: 1;
+        }
+
+        /* Middle: Analysis Section */
+        .analysis-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #1a1a2e;
+            border: 2px solid #404060;
+            border-radius: 8px;
+            overflow: hidden;
+            min-width: 400px;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #B0B0B0;
+            text-align: center;
+            gap: 15px;
+            font-size: 13px;
+        }
+
+        .empty-icon {
+            font-size: 40px;
+            opacity: 0.5;
+        }
+
+        .analysis-panel {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .analysis-panel.active {
+            display: flex;
+        }
+
+        .analysis-header {
+            background: rgba(0, 0, 0, 0.3);
+            border-bottom: 2px solid #FFC000;
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        .analysis-header h3 {
+            font-size: 14px;
+            color: #FFC000;
+            margin: 0;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .operator-badge {
+            font-size: 9px;
+            padding: 2px 6px;
+            background: rgba(0, 168, 255, 0.2);
+            border: 1px solid rgba(0, 168, 255, 0.4);
+            border-radius: 3px;
+            color: #00A8FF;
+            font-weight: 600;
+        }
+
+        .alert-level {
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 4px;
+            white-space: nowrap;
+        }
+
+        .alert-level.danger {
+            background: rgba(255, 68, 68, 0.1);
+            color: #FF4444;
+        }
+
+        .alert-level.clear {
+            background: rgba(68, 221, 136, 0.1);
+            color: #44DD88;
+        }
+
+        .alert-level.fuzzy {
+            background: rgba(255, 215, 0, 0.1);
+            color: #FFD700;
+        }
+
+        .analysis-content {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 12px;
+        }
+
+        .info-section {
+            background: rgba(255, 192, 0, 0.05);
+            border-left: 3px solid #FFC000;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .info-section-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: #FFC000;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(255, 192, 0, 0.1);
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: #B0B0B0;
+        }
+
+        .info-value {
+            color: #E8E8E8;
+            font-weight: 500;
+        }
+
+        .vhf-section {
+            background: rgba(0, 180, 220, 0.05);
+            border-left: 3px solid #00B4CC;
+            padding: 10px;
+            border-radius: 4px;
+        }
+
+        .vhf-section-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: #00B4CC;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .vhf-item {
+            font-size: 11px;
+            padding: 3px 0;
+            color: #E8E8E8;
+        }
+
+        .suggestion-section {
+            background: rgba(234, 179, 8, 0.05);
+            border-left: 3px solid #eab308;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+
+        .suggestion-section-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: #eab308;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .suggestion-content {
+            font-size: 11px;
+            line-height: 1.6;
+            color: #E8E8E8;
+        }
+
+        .suggestion-content .highlight-blue {
+            color: #00A8FF;
+            font-weight: 600;
+        }
+
+        .suggestion-content .highlight-cyan {
+            color: #00B4CC;
+            font-weight: 600;
+        }
+
+        .suggestion-content .highlight-red {
+            color: #FF4444;
+            font-weight: 600;
+        }
+
+        .suggestion-content .highlight-green {
+            color: #44DD88;
+            font-weight: 600;
+        }
+
+        .suggestion-content .highlight-yellow {
+            color: #eab308;
+            font-weight: 600;
+        }
+
+        .suggestion-action-box {
+            background: rgba(234, 179, 8, 0.1);
+            border: 1px solid rgba(234, 179, 8, 0.3);
+            padding: 8px;
+            border-radius: 4px;
+            margin-top: 6px;
+        }
+
+        .text-muted {
+            color: #888;
+            font-style: italic;
+        }
+
+        .dialogue-section {
+            background: rgba(100, 200, 150, 0.05);
+            border-left: 3px solid #64C896;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .dialogue-section-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: #64C896;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .dialogue-message {
+            font-size: 10px;
+            padding: 8px 10px;
+            margin-bottom: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            border-left: 3px solid #64C896;
+            line-height: 1.5;
+            position: relative;
+            animation: messageSlideIn 0.3s ease-out;
+        }
+
+        @keyframes messageSlideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .dialogue-message.agent {
+            border-left-color: #FFC000;
+            background: rgba(255, 192, 0, 0.08);
+        }
+
+        .dialogue-message.own {
+            border-left-color: #00A8FF;
+            background: rgba(0, 168, 255, 0.08);
+        }
+
+        .dialogue-message.operator {
+            border-left-color: #FF6B9D;
+            background: rgba(255, 107, 157, 0.12);
+            font-weight: 500;
+            box-shadow: 0 0 10px rgba(255, 107, 157, 0.2);
+        }
+
+        .dialogue-message.other {
+            border-left-color: #64C896;
+            background: rgba(100, 200, 150, 0.08);
+        }
+
+        .dialogue-turn {
+            font-size: 9px;
+            color: #B0B0B0;
+            margin-bottom: 4px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .dialogue-turn .speaker-icon {
+            font-size: 8px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+            flex-shrink: 0;
+        }
+
+        .btn {
+            flex: 1;
+            min-width: 70px;
+            padding: 8px;
+            border: none;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-clear {
+            background: #44DD88;
+            color: #1a1a2e;
+        }
+
+        .btn-fuzzy {
+            background: #FFD700;
+            color: #1a1a2e;
+        }
+
+        .btn-request {
+            background: #00B4CC;
+            color: #1a1a2e;
+        }
+
+        /* Right: AI Agent & RAG Combined Section */
+        .rag-section {
+            flex: 0 0 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        /* AI Agent Recommendation Panel */
+        .ai-recommendation-panel {
+            background: #1a1a2e;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            overflow: hidden;
+            flex: 0 0 auto;
+            max-height: 45%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .ai-recommendation-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 12px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .ai-recommendation-header h3 {
+            font-size: 14px;
+            color: white;
+            margin: 0;
+            flex: 1;
+        }
+
+        .ai-status-badge {
+            font-size: 9px;
+            padding: 3px 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            color: white;
+            font-weight: 600;
+        }
+
+        .ai-recommendation-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            font-size: 11px;
+            line-height: 1.6;
+        }
+
+        .ai-recommendation-content #aiSuggestion {
+            padding: 12px;
+        }
+
+        .ai-recommendation-content .suggestion-action-box {
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 8px;
+        }
+
+        .ai-recommendation-content strong {
+            color: #667eea;
+        }
+
+        /* AI Confidence Assessment */
+        .confidence-assessment {
+            background: rgba(255, 255, 255, 0.05);
+            border-left: 3px solid #667eea;
+            padding: 8px 10px;
+            margin-bottom: 10px;
+            border-radius: 3px;
+            font-size: 10px;
+        }
+
+        .confidence-level {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: 600;
+            font-size: 9px;
+        }
+
+        .confidence-high {
+            background: rgba(68, 221, 136, 0.2);
+            color: #44DD88;
+        }
+
+        .confidence-medium {
+            background: rgba(255, 215, 0, 0.2);
+            color: #FFD700;
+        }
+
+        .confidence-low {
+            background: rgba(255, 68, 68, 0.2);
+            color: #FF4444;
+        }
+
+        /* AI Agent Action Buttons */
+        .agent-action-buttons {
+            display: flex;
+            gap: 8px;
+            padding: 10px 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border-top: 1px solid rgba(102, 126, 234, 0.3);
+            flex-shrink: 0;
+        }
+
+        .agent-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .agent-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .agent-btn.stop-query {
+            background: #44DD88;
+            color: #1a1a2e;
+        }
+
+        .agent-btn.manual-input {
+            background: #FFD700;
+            color: #1a1a2e;
+        }
+
+        .agent-btn.execute {
+            background: #667eea;
+            color: white;
+        }
+
+        .agent-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Manual Input Dialog */
+        .manual-input-dialog {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #1a1a2e;
+            border: 2px solid #FFD700;
+            border-radius: 8px;
+            padding: 20px;
+            z-index: 1000;
+            min-width: 500px;
+            max-width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .manual-input-dialog.active {
+            display: block;
+        }
+
+        .dialog-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 999;
+            display: none;
+        }
+
+        .dialog-overlay.active {
+            display: block;
+        }
+
+        .dialog-title {
+            font-size: 14px;
+            color: #FFD700;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .dialog-input {
+            width: 100%;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #FFD700;
+            border-radius: 4px;
+            color: #E8E8E8;
+            font-size: 12px;
+            margin-bottom: 15px;
+        }
+
+        .dialog-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .dialog-btn {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .dialog-btn.confirm {
+            background: #FFD700;
+            color: #1a1a2e;
+        }
+
+        .dialog-btn.cancel {
+            background: #404060;
+            color: #E8E8E8;
+        }
+
+        /* AI Processing Area */
+        .ai-processing-area {
+            margin: 15px 0;
+            padding: 12px;
+            background: rgba(100, 200, 150, 0.08);
+            border: 1px solid #64C896;
+            border-radius: 6px;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .processing-title {
+            font-size: 11px;
+            color: #64C896;
+            margin-bottom: 10px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .processing-status {
+            font-size: 10px;
+            color: #FFD700;
+            margin-bottom: 8px;
+            font-style: italic;
+        }
+
+        .processing-result {
+            font-size: 11px;
+            color: #E8E8E8;
+            line-height: 1.6;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            border-left: 3px solid #64C896;
+            min-height: 40px;
+            animation: slideIn 0.4s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* RAG Reference Panel */
+        .rag-reference-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #1a1a2e;
+            border: 2px solid #404060;
+            border-radius: 8px;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        .rag-header {
+            background: rgba(0, 0, 0, 0.3);
+            border-bottom: 2px solid #00B4CC;
+            padding: 12px;
+            flex-shrink: 0;
+        }
+
+        .rag-header h3 {
+            font-size: 14px;
+            color: #00B4CC;
+            margin: 0;
+        }
+
+        .rag-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            align-content: start;
+        }
+
+        .rag-item {
+            margin-bottom: 0;
+            padding: 12px; 
+            border: 1px solid rgba(0, 180, 220, 0.3);
+            border-radius: 8px;
+            background: rgba(0, 180, 220, 0.05);
+            transition: all 0.3s ease; 
+        }
+
+        .rag-item:hover {
+            border-color: rgba(0, 180, 220, 0.6);
+            background: rgba(0, 180, 220, 0.1);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 180, 220, 0.2);
+        }
+
+        .rag-item:last-child {
+            border-bottom: 1px solid rgba(0, 180, 220, 0.3);;
+        }
+
+        .rag-rule {
+            font-size: 11px;
+            color: #FFC000;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .rag-description {
+            font-size: 11px;
+            color: #B0B0B0;
+            line-height: 1.5;
+            margin-bottom: 6px;
+        }
+
+        .rag-example {
+            font-size: 10px;
+            color: #888;
+            padding: 6px;
+            background: rgba(255, 192, 0, 0.05);
+            border-left: 2px solid #FFC000;
+            border-radius: 2px;
+            line-height: 1.4;
+        }
+
+        .corner-accent {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border: 2px solid #FFC000;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .corner-accent.tl { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+        .corner-accent.tr { top: -1px; right: -1px; border-left: none; border-bottom: none; }
+        .corner-accent.bl { bottom: -1px; left: -1px; border-right: none; border-top: none; }
+        .corner-accent.br { bottom: -1px; right: -1px; border-left: none; border-top: none; }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 192, 0, 0.4);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 192, 0, 0.6);
+        }
+
+        /* Responsive */
+        @media (max-width: 1600px) {
+            .map-section {
+                min-width: 400px;
+            }
+            .analysis-section {
+                min-width: 300px;
+            }
+            .rag-section {
+                flex: 0 0 350px;
+            }
+        }
+
+        @media (max-width: 1200px) {
+            .container {
+                flex-direction: column;
+            }
+            .map-section {
+                aspect-ratio: auto;
+                height: 35%;
+                min-width: 0;
+                max-width: 100%;
+            }
+            .analysis-section {
+                min-width: 0;
+                flex: 1;
+            }
+            .rag-section {
+                min-width: 0;
+                flex: 0 0 auto;
+                height: 400px;
+                flex-direction: row;
+                gap: 10px;
+            }
+            .ai-recommendation-panel,
+            .rag-reference-panel {
+                flex: 1;
+                max-height: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Left: Map -->
+        <div class="map-section">
+            <div class="map-header">
+                <h2>
+                    <i class="fas fa-map-marked-alt"></i> Maritime Chart - OVERTAKE
+                </h2>
+                <div class="status-indicator">
+                    <div class="status-item">
+                        <div class="status-dot" style="background: #FF4444;"></div>
+                        <span style="color: #FF4444; font-weight: 600;">Alert: <span id="dangerCount">0</span></span>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-dot" style="background: #44DD88;"></div>
+                        <span>Clear: <span id="clearCount">0</span></span>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-dot" style="background: #FFD700;"></div>
+                        <span>Uncertain: <span id="fuzzyCount">0</span></span>
+                    </div>
+                </div>
+            </div>
+            <div class="map-wrapper">
+                <div class="corner-accent tl"></div>
+                <div class="corner-accent tr"></div>
+                <div class="corner-accent bl"></div>
+                <div class="corner-accent br"></div>
+                <canvas id="mapCanvas"></canvas>
+            </div>
+        </div>
+
+        <!-- Middle: Analysis Panel -->
+        <div class="analysis-section">
+            <div id="emptyState" class="empty-state">
+                <div class="empty-icon">👆</div>
+                <div style="text-align: center;">
+                    <div style="font-size: 14px; margin-bottom: 8px;">Click on a ship to analyze</div>
+                    <div style="font-size: 10px; color: #888; line-height: 1.5;">
+                        AI Agent will assist with:<br>
+                        • Automated VHF communication<br>
+                        • Risk assessment & recommendations<br>
+                        • COLREGs compliance checking
+                    </div>
+                </div>
+            </div>
+
+            <div id="analysisPanel" class="analysis-panel">
+                <div class="analysis-header">
+                    <h3 id="shipTitle">
+                        <i class="fas fa-ship"></i> Ship Alert
+                        <span class="operator-badge">👨‍✈️ OPERATOR CONSOLE</span>
+                    </h3>
+                    <div id="alertLevel" class="alert-level danger">🔴 Danger</div>
+                </div>
+
+                <div class="analysis-content">
+                    <div class="info-section">
+                        <div class="info-section-title"><i class="fas fa-info-circle"></i> Basic Info</div>
+                        <div class="info-item">
+                            <span class="info-label">Ship ID:</span>
+                            <span class="info-value" id="shipId">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Name:</span>
+                            <span class="info-value" id="shipName">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Distance:</span>
+                            <span class="info-value" id="shipDistance">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Heading:</span>
+                            <span class="info-value" id="shipCourse">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Speed:</span>
+                            <span class="info-value" id="shipSpeed">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Position:</span>
+                            <span class="info-value" id="shipPosition">-</span>
+                        </div>
+                    </div>
+
+                    <div class="vhf-section">
+                        <div class="vhf-section-title"><i class="fas fa-broadcast-tower"></i> VHF Communication</div>
+                        <div class="vhf-item" id="vhfCall">Call Sign: -</div>
+                        <div class="vhf-item" id="vhfChannel">Channel: VHF 16</div>
+                        <div class="vhf-item" id="vhfStatus">Status: Monitoring</div>
+                        <div class="vhf-item" id="vhfLastMsg">Last: -</div>
+                    </div>
+
+                    <div class="dialogue-section" style="flex: 1; min-height: 0;">
+                        <div class="dialogue-section-title">
+                            <i class="fas fa-comments"></i> VHF Communication Log
+                            <span style="font-size: 9px; color: #888; margin-left: 8px;">(Own Ship ↔ Target Ship)</span>
+                        </div>
+                        <div id="dialogueHistory"></div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: AI Agent Recommendations & RAG Reference -->
+        <div class="rag-section">
+            <!-- AI Agent Recommendations Panel (Top) -->
+            <div class="ai-recommendation-panel">
+                <div class="ai-recommendation-header">
+                    <h3><i class="fas fa-robot"></i> AI Agent Decision Support</h3>
+                    <span class="ai-status-badge" id="aiAgentStatus">STANDBY</span>
+                </div>
+                <div class="ai-recommendation-content">
+                    <div id="aiSuggestion" style="flex: 1; overflow-y: auto;">
+                        <div class="empty-state" style="justify-content: center; height: 100%; gap: 10px;">
+                            <div style="font-size: 11px; color: #888; text-align: center;">
+                                <i class="fas fa-lightbulb"></i><br>
+                                AI agent will provide navigation recommendations<br>
+                                when a vessel enters the safety zone
+                            </div>
+                        </div>
+                    </div>
+                    <!-- AI Agent Action Buttons -->
+                    <div class="agent-action-buttons" id="agentActionButtons" style="display: none;">
+                        <button class="agent-btn stop-query" onclick="stopQuery()" id="btnStopQuery">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Information Clear</span>
+                        </button>
+                        <button class="agent-btn manual-input" onclick="showManualInput()" id="btnManualInput">
+                            <i class="fas fa-edit"></i>
+                            <span>Manual Input</span>
+                        </button>
+                        <button class="agent-btn execute" onclick="executeRecommendation()" id="btnExecute">
+                            <i class="fas fa-play-circle"></i>
+                            <span>Execute</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RAG COLREGs Reference Panel (Bottom) -->
+            <div class="rag-reference-panel">
+                <div class="rag-header">
+                    <h3><i class="fas fa-balance-scale"></i> COLREGs Reference Database</h3>
+                </div>
+                <div class="rag-content" id="ragContent">
+                    <div class="empty-state" style="justify-content: flex-start; height: auto; gap: 10px;">
+                        <div style="font-size: 11px; color: #888;">
+                            <i class="fas fa-book"></i> Relevant maritime regulations will be displayed here
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manual Input Dialog -->
+    <div class="dialog-overlay" id="dialogOverlay" onclick="safeHideManualInput()"></div>
+    <div class="manual-input-dialog" id="manualInputDialog">
+        <div class="dialog-title">
+            <i class="fas fa-edit"></i> Manual Operator Input
+            <span id="dialogTargetShip" style="font-size: 11px; color: #64C896; margin-left: 8px;"></span>
+        </div>
+        <textarea class="dialog-input" id="manualInputText" rows="4" placeholder="Enter your VHF communication message or instruction..."></textarea>
+
+        <!-- AI Processing Result Area -->
+        <div class="ai-processing-area" id="aiProcessingArea" style="display: none;">
+            <div class="processing-title">
+                <i class="fas fa-robot"></i> AI Agent Understanding & Refinement
+            </div>
+            <div class="processing-status" id="processingStatus">
+                <i class="fas fa-spinner fa-spin"></i> Analyzing your input...
+            </div>
+            <div class="processing-result" id="processingResult"></div>
+        </div>
+
+        <div class="dialog-buttons" id="initialButtons">
+            <button class="dialog-btn confirm" onclick="sendManualInput()">
+                <i class="fas fa-paper-plane"></i> Send
+            </button>
+            <button class="dialog-btn cancel" onclick="hideManualInput()">
+                Cancel
+            </button>
+        </div>
+
+        <div class="dialog-buttons" id="confirmButtons" style="display: none;">
+            <button class="dialog-btn confirm" onclick="confirmAndSend()">
+                <i class="fas fa-check"></i> Confirm & Send
+            </button>
+            <button class="dialog-btn cancel" onclick="resetManualInput()">
+                <i class="fas fa-edit"></i> Edit
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // ============= GEMINI API Configuration =============
+        const GEMINI_CONFIG = {
+            API_KEY: 'AIzaSyDIljQ__-HI-Bl3R-UY4v3wqkXtDtYqYXo',  // Enter your Gemini API Key here
+            API_URL: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent',
+            MODEL: 'gemini-pro'
+        };
+
+        // Generic function to call Gemini API
+        async function callGeminiAPI(prompt, systemPrompt = '', agentType = 'AI') {
+            // Check if API key is configured
+            if (!GEMINI_CONFIG.API_KEY || GEMINI_CONFIG.API_KEY === 'AIzaSyDIljQ__-HI-Bl3R-UY4v3wqkXtDtYqYXo') {
+                console.warn(`⚠️ ${agentType} Agent: API key not configured, using fallback`);
+                return null;
+            }
+
+            try {
+                console.log(`🤖 ${agentType} Agent: Calling Gemini API...`);
+                const fullPrompt = systemPrompt ? `${systemPrompt}\n\n${prompt}` : prompt;
+
+                const response = await fetch(`${GEMINI_CONFIG.API_URL}?key=${GEMINI_CONFIG.API_KEY}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{
+                                text: fullPrompt
+                            }]
+                        }],
+                        generationConfig: {
+                            temperature: 0.7,
+                            maxOutputTokens: 1024,
+                        }
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API request failed: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const result = data.candidates[0].content.parts[0].text;
+                console.log(`✅ ${agentType} Agent: Response received`);
+                return result;
+            } catch (error) {
+                console.error(`❌ ${agentType} Agent Error:`, error);
+                return null;
+            }
+        }
+
+        const CONFIG = {
+            MAP_SIZE: 1200,
+            SAFE_DISTANCE: 3704,
+            CANVAS_CENTER: 600,
+            NUM_SHIPS: 2,  // Reduced to 2 target ships
+            METERS_PER_NAUTICAL_MILE: 1852,
+            WORLD_TO_SCREEN_SCALE: 0.1,  // Adjust scale for wider visibility
+        };
+
+        const AGENT_STATE = {
+            INITIAL: 'initial',
+            AWAITING_RESPONSE: 'awaiting_response',
+            CLARIFIED: 'clarified',
+            RESOLVED: 'resolved'
+        };
+
+        const COLREGS_RULES = {
+            'OVERTAKE': {
+                rule: 'COLREGs Rule 13: Overtaking',
+                description: 'Any vessel overtaking any other shall keep out of the way of the vessel being overtaken.',
+                details: [
+                    'Definition: A vessel is considered to be overtaking when coming up with another vessel from a direction more than 22.5° abaft her beam.',
+                    'Responsibility: The overtaking vessel must pass at a safe distance and must not impede the passage of the overtaken vessel.',
+                    'Sound Signals: When overtaking, the overtaking vessel must sound the appropriate signal.',
+                    'Passing: Must maintain safe distance until completely past and clear of the other vessel.'
+                ]
+            },
+            'STAND_ON_VESSEL': {
+                rule: 'COLREGs Rule 17: Action by Stand-on Vessel',
+                description: 'The stand-on vessel should maintain course and speed.',
+                details: [
+                    '(a)(i) Where one of two vessels is to keep out of the way the other shall keep her course and speed.',
+                    'Exception: The stand-on vessel may take action if collision appears inevitable.',
+                    'Timing: Action must be taken in ample time to be effective.',
+                    'Maneuver: Preferably should be a bold alteration rather than a series of small changes.'
+                ]
+            },
+            'RISK_ASSESSMENT': {
+                rule: 'COLREGs Rule 7: Risk of Collision',
+                description: 'Determine risk of collision using all available means.',
+                details: [
+                    'Continuous observation: Keep proper lookout at all times.',
+                    'Distance: Large distance between vessels may indicate safe passing.',
+                    'Rate of change: Watch bearing and distance changes carefully.',
+                    'Radar use: If equipped, use radar to determine risk of collision.',
+                    'Doubt: If in doubt, assume risk of collision exists.'
+                ]
+            },
+            'COMMUNICATION': {
+                rule: 'COLREGs Rule 34: Maneuvering and Warning Signals',
+                description: 'Sound signals to indicate intentions.',
+                details: [
+                    'One short blast: I am altering my course to starboard.',
+                    'Two short blasts: I am altering my course to port.',
+                    'Three short blasts: I am operating astern propulsion.',
+                    'VHF: When in doubt, establish VHF communication.',
+                    'Channel 16: Standard hailing and distress frequency.'
+                ]
+            }
+        };
+
+        // VHF callsigns
+        const VHF_CALLSIGNS = {
+            'SHIP001': { callSign: 'NORDIC-WAVE', mmsi: '219000001' },
+            'SHIP002': { callSign: 'PACIFIC-TDR', mmsi: '219000002' },
+            'SHIP003': { callSign: 'ATLANTIC-CAR', mmsi: '219000003' },
+            'SHIP004': { callSign: 'MARITIME-PD', mmsi: '219000004' }
+        };
+
+        const AGENT_QUESTIONS = [
+            "This is Own Ship calling {callSign}, we observe you approaching from astern, what are your intentions? Over.",
+            "{callSign}, this is Own Ship. Confirm if you are planning to overtake and on which side? Over.",
+            "Own Ship to {callSign}, we are maintaining course and speed, request your overtaking plan. Over.",
+            "{callSign}, Own Ship here. Current distance {distance} nm, please confirm your intentions. Over."
+        ];
+
+        const TARGET_RESPONSES = {
+            'CLEAR': [
+                "Own Ship, this is {callSign}. We are overtaking on your starboard side. Maintain your course and speed. Over.",
+                "{callSign} roger, approaching from astern, will pass on your starboard. Keep steady course. Over.",
+                "Own Ship, {callSign} confirms overtaking maneuver. We will pass safely on starboard side. Over."
+            ],
+            'FUZZY': [
+                "Own Ship, {callSign} here. We are approaching but may need to alter course soon. Stand by. Over.",
+                "{callSign} to Own Ship, monitoring traffic, our overtaking plan is uncertain at this moment. Over.",
+                "Own Ship, this is {callSign}. Conditions may require course adjustment, cannot confirm overtaking side yet. Over."
+            ],
+            'UNCLEAR': [
+                "Own Ship, {callSign}. Signal weak, please repeat. Over.",
+                "{callSign}, did not copy your message clearly, say again. Over.",
+                "Own Ship, this is {callSign}, communication interference, unclear. Over."
+            ]
+        };
+
+        const BEHAVIORS = [
+            {
+                name: 'straight_north',
+                initialAngle: Math.PI / 2,
+                turnRate: 0,
+                description: 'Moving straight north'
+            },
+            {
+                name: 'slight_left',
+                initialAngle: Math.PI * 0.55,  // Slightly left
+                turnRate: 0,
+                description: 'Straight course, slightly left'
+            },
+            {
+                name: 'slight_right',
+                initialAngle: Math.PI * 0.45,  // Slightly right
+                turnRate: 0,
+                description: 'Straight course, slightly right'
+            },
+            {
+                name: 'steady_northeast',
+                initialAngle: Math.PI * 0.4,  // Northeast direction
+                turnRate: 0,
+                description: 'Steady northeast course'
+            }
+        ];
+
+        let ownShip = {
+            id: 'OWN_SHIP',
+            name: 'Own Ship',
+            worldX: 0,
+            worldY: 0,
+            angle: Math.PI / 2,  // Due north
+            speed: 5 * 0.5 * 0.18,  // 5 knots speed, slower for realistic timing
+            knotsSpeed: 5,
+            color: '#00A8FF',
+        };
+
+        class Ship {
+            constructor(id, name, worldX, worldY, behaviorIndex) {
+                this.id = id;
+                this.name = name;
+                this.worldX = worldX;
+                this.worldY = worldY;
+                const knotsSpeed = 7 + Math.random() * 3;  // 7-10 knots, faster speed for overtaking ships
+                this.knotsSpeed = knotsSpeed;
+                this.speed = knotsSpeed * 0.5 * 0.18;  // Match speed coefficient
+                this.color = '#B0B0B0';
+                this.status = 'safe';
+                this.distanceToOwnShip = Infinity;
+
+                const behavior = BEHAVIORS[behaviorIndex % BEHAVIORS.length];
+                this.behavior = { ...behavior };
+                this.angle = this.behavior.initialAngle;  // Set initial heading
+
+                this.agentState = AGENT_STATE.INITIAL;
+                this.agentMessages = [];
+                this.dialogueHistory = [];
+                this.requestCount = 0;
+                this.lastVHFMessage = new Date().toLocaleTimeString();
+                this.confidenceLevel = 'medium';  // Confidence level: low, medium, high
+                this.matchingDegree = '';  // Communication-behavior matching degree description
+                this.lastStatus = 'safe';  // Track status changes for RAG updates
+                this.ragContentGenerated = false;  // Track if RAG content has been generated
+            }
+
+            update(ownShip) {
+                // Maintain stable heading with minor natural variations
+                if (Math.random() < 0.005) {  // 0.5% probability for minor adjustment
+                    this.angle += (Math.random() - 0.5) * 0.0001;  // Very small angle adjustment
+                }
+
+                // Move according to current angle and speed
+                this.worldX += Math.cos(this.angle) * this.speed;
+                this.worldY += Math.sin(this.angle) * this.speed;
+
+                const dx = this.worldX - ownShip.worldX;
+                const dy = this.worldY - ownShip.worldY;
+                this.distanceToOwnShip = Math.sqrt(dx * dx + dy * dy);
+
+                if (this.distanceToOwnShip < CONFIG.SAFE_DISTANCE && this.status === 'safe') {
+                    this.status = 'danger';
+                    this.color = '#FF4444';
+                    this.agentState = AGENT_STATE.INITIAL;
+                    const distanceNM = this.distanceToOwnShip / CONFIG.METERS_PER_NAUTICAL_MILE;
+
+                    console.log(`⚠️ ALERT: ${this.name} entered safety zone at ${distanceNM.toFixed(2)} nm`);
+                    console.log(`🤖 AI Agent System activated for ${this.name}`);
+
+                    // Agent automatically initiates inquiry
+                    const vhfInfo = VHF_CALLSIGNS[this.id];
+                    const question = AGENT_QUESTIONS[Math.floor(Math.random() * AGENT_QUESTIONS.length)]
+                        .replace('{callSign}', vhfInfo.callSign)
+                        .replace('{distance}', distanceNM.toFixed(2));
+
+                    console.log(`📡 Own Ship → ${vhfInfo.callSign}: Initiating VHF communication...`);
+                    this.addDialogue('OWN_SHIP', question);
+
+                    // Delayed response generation (using Gemini API to simulate target ship operator)
+                    setTimeout(async () => {
+                        const response = await this.generateTargetShipResponse(question, vhfInfo, distanceNM);
+                        if (response) {
+                            console.log(`📻 ${vhfInfo.callSign} → Own Ship: Response received (${response.type.toUpperCase()})`);
+                            this.addDialogue('TARGET_SHIP', response.message);
+                            this.initialResponseType = response.type;
+
+                            // Generate own ship Agent's recommendations
+                            console.log(`🧠 Own Ship Agent: Analyzing communication and generating recommendations...`);
+                            setTimeout(() => {
+                                this.generateAISuggestion(response.type);
+                            }, 1000);
+                        } else {
+                            // Fallback logic when API call fails
+                            const responseType = Math.random() < 0.4 ? 'CLEAR' : (Math.random() < 0.7 ? 'FUZZY' : 'UNCLEAR');
+                            const responses = TARGET_RESPONSES[responseType];
+                            const fallbackResponse = responses[Math.floor(Math.random() * responses.length)]
+                                .replace('{callSign}', vhfInfo.callSign)
+                                .replace('{course}', (this.angle * 180 / Math.PI).toFixed(0))
+                                .replace('{speed}', (this.speed * 100).toFixed(1));
+
+                            this.addDialogue('TARGET_SHIP', fallbackResponse);
+                            this.initialResponseType = responseType === 'CLEAR' ? 'clear' : 'fuzzy';
+
+                            setTimeout(() => {
+                                this.generateAISuggestion(responseType);
+                            }, 1000);
+                        }
+                    }, 2000);  // 2 second delay
+                } else if (this.distanceToOwnShip >= CONFIG.SAFE_DISTANCE && this.status !== 'safe') {
+                    // Ship left safety distance, automatically reset to safe (gray) status
+                    this.status = 'safe';
+                    this.color = '#B0B0B0';
+                }
+            }
+
+            addAgentMessage(message) {
+                this.agentMessages.push({
+                    timestamp: new Date().toLocaleTimeString(),
+                    message: message,
+                    turn: this.requestCount
+                });
+            }
+
+            addDialogue(speaker, message) {
+                const speakerNames = {
+                    'OWN_SHIP': 'Own Ship',
+                    'TARGET_SHIP': VHF_CALLSIGNS[this.id]?.callSign || this.name,
+                    'AGENT': 'AI Agent',
+                    'OPERATOR': 'Human Operator'
+                };
+
+                this.dialogueHistory.push({
+                    speaker: speakerNames[speaker] || speaker,
+                    speakerType: speaker,
+                    message: message,
+                    time: new Date().toLocaleTimeString()
+                });
+                this.lastVHFMessage = new Date().toLocaleTimeString();
+            }
+
+            // ============= Target Ship Operator Agent (Gemini) =============
+            async generateTargetShipResponse(ownShipQuestion, vhfInfo, distanceNM) {
+                const systemPrompt = `You are a professional ship operator on vessel "${vhfInfo.callSign}".
+You are receiving a VHF radio call from another vessel (Own Ship) during an overtaking situation.
+Current situation:
+- Your vessel call sign: ${vhfInfo.callSign}
+- Your current course: ${(this.angle * 180 / Math.PI).toFixed(0)}°
+- Your current speed: ${this.knotsSpeed.toFixed(1)} knots
+- Distance to Own Ship: ${distanceNM.toFixed(2)} nautical miles
+- Scenario: You are approaching Own Ship from astern (you are overtaking them)
+
+You should respond professionally following maritime VHF radio protocols.
+Your response should be one of three types based on your current situation:
+1. CLEAR: You can maintain course and speed, safe to overtake on their starboard side
+2. FUZZY: Your intentions are uncertain (e.g., may need to alter course, unclear situation)
+3. UNCLEAR: Communication problems or cannot provide clear response
+
+Respond in a natural, professional maritime radio communication style. Keep it concise (1-2 sentences).
+End with "Over." as per radio protocol.`;
+
+                const prompt = `Received message: "${ownShipQuestion}"
+
+Based on the current situation, decide if you should respond with:
+- A CLEAR response (confirming safe passage)
+- A FUZZY response (uncertain intentions)
+- An UNCLEAR response (communication issues)
+
+Respond in character as the ship operator. Format: [TYPE] Your radio message`;
+
+                try {
+                    const apiResponse = await callGeminiAPI(prompt, systemPrompt, 'Target Ship');
+                    if (!apiResponse) return null;
+
+                    // Parse response
+                    const typeMatch = apiResponse.match(/\[?(CLEAR|FUZZY|UNCLEAR)\]?/i);
+                    let responseType = 'FUZZY';
+                    if (typeMatch) {
+                        responseType = typeMatch[1].toUpperCase();
+                    }
+
+                    // Extract message content (remove type label)
+                    let message = apiResponse.replace(/\[?(CLEAR|FUZZY|UNCLEAR)\]?\s*/i, '').trim();
+
+                    // Ensure message includes call sign
+                    if (!message.includes(vhfInfo.callSign)) {
+                        message = `${vhfInfo.callSign}, ${message}`;
+                    }
+
+                    console.log(`🚢 Target Ship ${vhfInfo.callSign}: Generated ${responseType} response`);
+
+                    return {
+                        type: responseType === 'CLEAR' ? 'clear' : (responseType === 'FUZZY' ? 'fuzzy' : 'unclear'),
+                        message: message
+                    };
+                } catch (error) {
+                    console.error('Target Ship Agent Error:', error);
+                    return null;
+                }
+            }
+
+            // ============= Own Ship Decision Agent (Gemini) =============
+            async generateAISuggestion(responseType) {
+                const distanceNM = this.distanceToOwnShip / CONFIG.METERS_PER_NAUTICAL_MILE;
+                const vhfInfo = VHF_CALLSIGNS[this.id];
+
+                // Get recent dialogue history
+                const recentDialogue = this.dialogueHistory.slice(-3).map(d =>
+                    `[${d.speaker}]: ${d.message}`
+                ).join('\n');
+
+                const systemPrompt = `You are an advanced maritime navigation AI assistant for Own Ship.
+Your role is to analyze the current situation and provide professional navigation recommendations based on COLREGs (International Regulations for Preventing Collisions at Sea).
+
+Current Scenario: BEING OVERTAKEN
+- Scenario Type: Target vessel ${vhfInfo.callSign} is overtaking Own Ship from astern
+- Target Vessel: ${vhfInfo.callSign}
+- Target Course: ${(this.angle * 180 / Math.PI).toFixed(0)}°
+- Target Speed: ${this.knotsSpeed.toFixed(1)} knots (faster than Own Ship)
+- Current Distance: ${distanceNM.toFixed(2)} nautical miles
+- Communication Status: ${responseType === 'CLEAR' || responseType === 'clear' ? 'Clear confirmation received' : (responseType === 'FUZZY' || responseType === 'fuzzy' ? 'Unclear/Uncertain response' : 'Communication unclear')}
+
+Relevant COLREGs:
+- Rule 13: Overtaking - Vessel being overtaken shall maintain course and speed
+- Rule 7: Risk of Collision - Proper assessment required
+- Rule 8: Action to Avoid Collision - Action should be positive and in ample time
+- Rule 34: Sound signals for maneuvering
+
+Recent VHF Communication:
+${recentDialogue}
+
+Provide a concise analysis and specific action recommendations in HTML format.
+Use these span classes for highlighting:
+- highlight-blue: for data sources (AIS, Radar, VHF)
+- highlight-cyan: for COLREGs rules
+- highlight-green: for safe/positive indicators
+- highlight-yellow: for caution/distance values
+- highlight-red: for warnings/critical actions`;
+
+                const prompt = `Analyze the current situation where Own Ship is being overtaken and provide:
+1. Brief assessment (1-2 sentences) mentioning the data source and relevant COLREGs rule
+2. 3 specific recommended actions in a numbered list
+
+Format your response as HTML:
+- Use <span class="highlight-[color]">text</span> for important terms
+- Wrap the action list in: <div class="suggestion-action-box"><strong>Recommended Actions:</strong><br>[numbered list]</div>
+- Use <br> for line breaks in the action list
+
+Keep it professional, concise, and actionable.`;
+
+                try {
+                    const apiResponse = await callGeminiAPI(prompt, systemPrompt, 'Own Ship');
+                    if (apiResponse) {
+                        this.aiSuggestion = apiResponse;
+                        console.log(`⚓ Own Ship Agent: Generated recommendation for ${vhfInfo.callSign}`);
+                    } else {
+                        // Use fallback recommendation
+                        this.aiSuggestion = this.generateFallbackSuggestion(responseType, vhfInfo, distanceNM);
+                        console.log(`⚓ Own Ship Agent: Using fallback recommendation`);
+                    }
+                } catch (error) {
+                    console.error('Own Ship Agent Error:', error);
+                    this.aiSuggestion = this.generateFallbackSuggestion(responseType, vhfInfo, distanceNM);
+                }
+
+                // If this ship is currently selected, update display
+                if (selectedShip?.id === this.id) {
+                    const suggestionDiv = document.getElementById('aiSuggestion');
+                    const aiAgentStatus = document.getElementById('aiAgentStatus');
+                    const agentActionButtons = document.getElementById('agentActionButtons');
+
+                    if (suggestionDiv) {
+                        suggestionDiv.innerHTML = this.aiSuggestion;
+                    }
+
+                    // Update status and show buttons
+                    if (aiAgentStatus) {
+                        aiAgentStatus.textContent = 'ACTIVE';
+                        aiAgentStatus.style.background = 'rgba(68, 221, 136, 0.3)';
+                    }
+
+                    if (agentActionButtons) {
+                        agentActionButtons.style.display = 'flex';
+                    }
+                }
+            }
+
+            // Fallback recommendation generation (used when API fails)
+            generateFallbackSuggestion(responseType, vhfInfo, distanceNM) {
+                if (responseType === 'CLEAR' || responseType === 'clear') {
+                    this.confidenceLevel = 'high';
+                    this.matchingDegree = 'Communication is consistent with observed vessel behavior. Clear intent confirmed.';
+                    return `
+                        <div class="confidence-assessment">
+                            <strong>Confidence Assessment:</strong>
+                            <span class="confidence-level confidence-high">HIGH</span><br>
+                            <span style="color: #888;">Communication-Behavior Match: ${this.matchingDegree}</span>
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <strong style="color: #44DD88;">✓ CONDITION A: CONSISTENT/CLEAR</strong>
+                        </div>
+                        Based on <span class="highlight-blue">VHF communication</span> and <span class="highlight-cyan">COLREGs Rule 13</span> (Overtaking),
+                        target vessel <span class="highlight-green">${vhfInfo.callSign}</span> is overtaking from astern and has confirmed its intentions.
+                        Current separation: <span class="highlight-yellow">${distanceNM.toFixed(2)} nm</span>
+                        <div class="suggestion-action-box">
+                            <strong>🎯 Recommended Actions:</strong><br>
+                            <strong>1.</strong> <span class="highlight-green">Maintain current course and speed</span>
+                            <div style="font-size: 10px; color: #888; margin-left: 15px;">
+                                Basis: COLREGs Rule 13 - Vessel being overtaken shall maintain course and speed | Dynamic Info: Stand-on vessel duty
+                            </div>
+                            <strong>2.</strong> Monitor overtaking vessel's progress on <span class="highlight-cyan">radar and AIS</span>
+                            <div style="font-size: 10px; color: #888; margin-left: 15px;">
+                                Basis: COLREGs Rule 7 - Risk assessment | AIS Data: Overtaking vessel speed ${this.knotsSpeed.toFixed(1)} knots
+                            </div>
+                            <strong>3.</strong> Keep continuous <span class="highlight-blue">VHF watch on Channel 16</span>
+                            <div style="font-size: 10px; color: #888; margin-left: 15px;">
+                                Basis: COLREGs Rule 34 - Sound and light signals | Dynamic Communication: Maintain contact
+                            </div>
+                            <strong>4.</strong> Do NOT alter course or speed unless situation requires
+                            <div style="font-size: 10px; color: #888; margin-left: 15px;">
+                                Basis: COLREGs Rule 13 - Stand-on vessel shall not impede overtaking vessel | Dynamic Monitoring: Predictable behavior
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    // Handle FUZZY, UNCLEAR, and all other uncertain responses as CONDITION B
+                    this.confidenceLevel = 'medium';
+                    this.matchingDegree = 'Communication lacks specificity. Potential physical risk exists but action parameters unclear.';
+                    return `
+                        <div class="confidence-assessment">
+                            <strong>Confidence Assessment:</strong>
+                            <span class="confidence-level confidence-medium">MEDIUM</span><br>
+                            <span style="color: #888;">Communication-Behavior Match: ${this.matchingDegree}</span>
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <strong style="color: #FFD700;">⚠ CONDITION B: VAGUE/AMBIGUOUS</strong>
+                        </div>
+                        Based on <span class="highlight-blue">VHF analysis</span> and <span class="highlight-cyan">COLREGs Rule 7</span> (Risk Assessment),
+                        overtaking vessel <span class="highlight-yellow">${vhfInfo.callSign}</span> has uncertain intentions.
+                        Current separation: <span class="highlight-red">${distanceNM.toFixed(2)} nm</span>
+                        <div class="suggestion-action-box">
+                            <strong>🎯 Recommended Actions:</strong><br>
+                            <strong>1.</strong> <span class="highlight-yellow">Maintain course and speed with heightened awareness</span>
+                            <div style="font-size: 10px; color: #888; margin-left: 15px;">
+                                Basis: COLREGs Rule 13 - Stand-on vessel maintains course | Dynamic Info: Uncertain overtaking intentions require caution
+                            </div>
+                            <strong>2.</strong> Request <span class="highlight-cyan">clarification of overtaking intentions</span> via VHF CH 16
+                            <div style="font-size: 10px; color: #888; margin-left: 15px;">
+                                Basis: Dynamic Communication - Verify overtaking side and speed plan | COLREGs Rule 34 - Communication protocol
+                            </div>
+                            <strong>3.</strong> Increase radar/AIS monitoring frequency
+                            <div style="font-size: 10px; color: #888; margin-left: 15px;">
+                                Basis: COLREGs Rule 7 - Continuous risk assessment when intentions unclear
+                            </div>
+                            <strong>4.</strong> Be prepared to <span class="highlight-red">take action</span> if overtaking vessel's behavior becomes erratic
+                            <div style="font-size: 10px; color: #888; margin-left: 15px;">
+                                Basis: COLREGs Rule 17(a)(ii) - Stand-on vessel may take action when give-way vessel does not act appropriately
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
+            getAgentResponse(userResponse) {
+                this.requestCount++;
+                const responses = {
+                    'clear': `Roger that. Collision risk assessed. Proceeding with caution. Status: CLEAR`,
+                    'fuzzy': `Acknowledged. More information needed. Continuing monitoring. Status: UNCLEAR`,
+                    'request': `Position update requested. Awaiting vessel response via VHF...`
+                };
+                const msg = responses[userResponse];
+                this.addDialogue(userResponse === 'request' ? 'AGENT' : 'OWN_SHIP', msg);
+                return msg;
+            }
+        }
+
+        let ships = [];
+        let canvas = document.getElementById('mapCanvas');
+        let ctx = canvas.getContext('2d');
+        let hoveredShip = null;
+        let selectedShip = null;
+
+        function init() {
+            canvas.width = CONFIG.MAP_SIZE;
+            canvas.height = CONFIG.MAP_SIZE;
+
+
+            const shipNames = ['Nordic Wave', 'Pacific Trader', 'Atlantic Carrier', 'Maritime Pride'];
+            const MIN_SHIP_DISTANCE = 1500;  // Minimum distance between ships (meters)
+
+            for (let i = 0; i < CONFIG.NUM_SHIPS; i++) {
+                let validPosition = false;
+                let attempts = 0;
+                let worldX, worldY;
+
+                // Try to find a position that doesn't overlap with other ships
+                while (!validPosition && attempts < 50) {
+                    worldX = (Math.random() - 0.5) * 800;  // Horizontal random spread ±400m, concentrated
+                    worldY = -3800 - Math.random() * 400 - i * 150;  // Y direction: -3800 to -4350m, behind own ship (other ships overtaking)
+
+                    // Check distance to existing ships
+                    validPosition = true;
+                    for (const existingShip of ships) {
+                        const dx = worldX - existingShip.worldX;
+                        const dy = worldY - existingShip.worldY;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+
+                        if (distance < MIN_SHIP_DISTANCE) {
+                            validPosition = false;
+                            break;
+                        }
+                    }
+                    attempts++;
+                }
+
+                const ship = new Ship(
+                    `SHIP${String(i + 1).padStart(3, '0')}`,
+                    shipNames[i],
+                    worldX,
+                    worldY,
+                    i
+                );
+                ships.push(ship);
+            }
+
+            canvas.addEventListener('mousemove', handleCanvasMouseMove);
+            canvas.addEventListener('mouseleave', handleCanvasMouseLeave);
+            canvas.addEventListener('click', handleCanvasClick);
+            document.addEventListener('click', handleDocumentClick);
+
+            animate();
+        }
+
+        function animate() {
+            ownShip.worldX += Math.cos(ownShip.angle) * ownShip.speed;
+            ownShip.worldY += Math.sin(ownShip.angle) * ownShip.speed;
+            if (Math.random() < 0.01) {
+                ownShip.angle += (Math.random() - 0.5) * 0.0001;
+            }
+
+            ships.forEach(ship => ship.update(ownShip));
+            updateStats();
+            draw();
+
+            // Automatically update dialogue display and real-time information for selected ship
+            if (selectedShip) {
+                updateDialogueDisplay(selectedShip);
+                updateShipRealTimeInfo(selectedShip);
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        // Update real-time ship information (distance, position, speed, course)
+        function updateShipRealTimeInfo(ship) {
+            if (!ship || !document.getElementById('analysisPanel').classList.contains('active')) return;
+
+            const relX = ship.worldX - ownShip.worldX;
+            const relY = ship.worldY - ownShip.worldY;
+            const distanceNM = ship.distanceToOwnShip / CONFIG.METERS_PER_NAUTICAL_MILE;
+            const relXnm = relX / CONFIG.METERS_PER_NAUTICAL_MILE;
+            const relYnm = relY / CONFIG.METERS_PER_NAUTICAL_MILE;
+
+            // Update distance
+            const distanceElement = document.getElementById('shipDistance');
+            if (distanceElement) {
+                distanceElement.textContent = `${distanceNM.toFixed(2)} nm`;
+            }
+
+            // Update course (heading)
+            const courseElement = document.getElementById('shipCourse');
+            if (courseElement) {
+                courseElement.textContent = `${(ship.angle * 180 / Math.PI).toFixed(0)}°`;
+            }
+
+            // Update speed
+            const speedElement = document.getElementById('shipSpeed');
+            if (speedElement) {
+                speedElement.textContent = `${ship.knotsSpeed.toFixed(1)} knots`;
+            }
+
+            // Update position
+            const positionElement = document.getElementById('shipPosition');
+            if (positionElement) {
+                positionElement.textContent = `(${relXnm.toFixed(2)}, ${relYnm.toFixed(2)}) nm`;
+            }
+
+            // Update last VHF message time
+            const vhfLastMsgElement = document.getElementById('vhfLastMsg');
+            if (vhfLastMsgElement) {
+                vhfLastMsgElement.textContent = `Last: ${ship.lastVHFMessage}`;
+            }
+
+            // Update alert level badge
+            const alertLevel = document.getElementById('alertLevel');
+            if (alertLevel) {
+                if (ship.status === 'danger') {
+                    alertLevel.className = 'alert-level danger';
+                    alertLevel.textContent = '🔴 Danger';
+                } else if (ship.status === 'clear') {
+                    alertLevel.className = 'alert-level clear';
+                    alertLevel.textContent = '🟢 Clear';
+                } else if (ship.status === 'fuzzy') {
+                    alertLevel.className = 'alert-level fuzzy';
+                    alertLevel.textContent = '🟡 Unclear';
+                } else if (ship.status === 'safe') {
+                    alertLevel.className = 'alert-level';
+                    alertLevel.style.background = 'rgba(128, 128, 128, 0.1)';
+                    alertLevel.style.color = '#808080';
+                    alertLevel.textContent = '⚪ Monitoring';
+                }
+            }
+
+            // Dynamically update COLREGs Reference Database only when status changes
+            if (ship.status !== ship.lastStatus) {
+                ship.lastStatus = ship.status;
+                ship.ragContentGenerated = false;
+            }
+
+            if (ship.status !== 'safe' && !ship.ragContentGenerated) {
+                ship.ragContentGenerated = true;
+                updateRAGContent(ship);
+            } else if (ship.status === 'safe') {
+                // For safe status, show placeholder
+                const ragContent = document.getElementById('ragContent');
+                if (ragContent && !ship.ragContentGenerated) {
+                    ship.ragContentGenerated = true;
+                    ragContent.innerHTML = `<div class="empty-state" style="justify-content: flex-start; height: auto; gap: 10px;">
+                        <div style="font-size: 11px; color: #888;">
+                            <i class="fas fa-info-circle"></i> COLREGs analysis available when vessel enters safety zone
+                        </div>
+                    </div>`;
+                }
+            }
+        }
+
+        // Update dialogue display (dynamic real-time refresh)
+        function updateDialogueDisplay(ship) {
+            if (!ship || !document.getElementById('analysisPanel').classList.contains('active')) return;
+
+            const dialogueDiv = document.getElementById('dialogueHistory');
+            const currentHTML = dialogueDiv.innerHTML;
+
+            // Generate new dialogue HTML
+            const newHTML = ship.dialogueHistory.map(d => {
+                let messageClass = 'other';
+                let speakerIcon = '📡';
+                if (d.speakerType === 'OWN_SHIP') {
+                    messageClass = 'own';
+                    speakerIcon = '🚢';
+                } else if (d.speakerType === 'AGENT') {
+                    messageClass = 'agent';
+                    speakerIcon = '🤖';
+                } else if (d.speakerType === 'OPERATOR') {
+                    messageClass = 'operator';
+                    speakerIcon = '👨‍✈️';
+                } else {
+                    speakerIcon = '⚓';
+                }
+
+                return `<div class="dialogue-message ${messageClass}">
+                    <div class="dialogue-turn">
+                        <span class="speaker-icon">${speakerIcon}</span>
+                        [${d.time}] ${d.speaker}:
+                    </div>
+                    ${d.message}
+                </div>`;
+            }).join('');
+
+            // Only update when content changes
+            if (newHTML !== currentHTML) {
+                dialogueDiv.innerHTML = newHTML;
+
+                // Auto-scroll to latest message
+                setTimeout(() => {
+                    if (dialogueDiv.lastElementChild) {
+                        dialogueDiv.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }
+                }, 100);
+            }
+        }
+
+        function draw() {
+            ctx.fillStyle = 'rgba(10, 10, 21, 0.3)';
+            ctx.fillRect(0, 0, CONFIG.MAP_SIZE, CONFIG.MAP_SIZE);
+
+            ctx.strokeStyle = 'rgba(64, 64, 96, 0.2)';
+            ctx.lineWidth = 1;
+            const gridSpacingMeters = 1000;
+            const gridSpacingPixels = gridSpacingMeters * CONFIG.WORLD_TO_SCREEN_SCALE;
+            for (let x = 0; x <= CONFIG.MAP_SIZE; x += gridSpacingPixels) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, CONFIG.MAP_SIZE);
+                ctx.stroke();
+            }
+            for (let y = 0; y <= CONFIG.MAP_SIZE; y += gridSpacingPixels) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(CONFIG.MAP_SIZE, y);
+                ctx.stroke();
+            }
+
+            ctx.strokeStyle = 'rgba(255, 192, 0, 0.4)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([8, 8]);
+            ctx.beginPath();
+            const safeDistancePixels = CONFIG.SAFE_DISTANCE * CONFIG.WORLD_TO_SCREEN_SCALE;
+            ctx.arc(CONFIG.CANVAS_CENTER, CONFIG.CANVAS_CENTER, safeDistancePixels, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.save();
+            ctx.translate(CONFIG.CANVAS_CENTER, CONFIG.CANVAS_CENTER);
+            ctx.rotate(-ownShip.angle);  // Reverse angle to match Y-axis flip
+            ctx.fillStyle = ownShip.color;
+            ctx.beginPath();
+            ctx.moveTo(18, 0);
+            ctx.lineTo(-12, -12);
+            ctx.lineTo(-6, 0);
+            ctx.lineTo(-12, 12);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+
+            ships.forEach(ship => {
+                const relX = ship.worldX - ownShip.worldX;
+                const relY = ship.worldY - ownShip.worldY;
+                const screenX = CONFIG.CANVAS_CENTER + relX * CONFIG.WORLD_TO_SCREEN_SCALE;
+                const screenY = CONFIG.CANVAS_CENTER - relY * CONFIG.WORLD_TO_SCREEN_SCALE;  // Reverse Y-axis to match mathematical coordinate system
+
+                if (screenX > -100 && screenX < CONFIG.MAP_SIZE + 100 && 
+                    screenY > -100 && screenY < CONFIG.MAP_SIZE + 100) {
+                    
+                    ctx.save();
+                    ctx.translate(screenX, screenY);
+                    ctx.rotate(-ship.angle);  // Reverse angle to match Y-axis flip
+
+                    ctx.fillStyle = ship.color;
+                    ctx.beginPath();
+                    ctx.moveTo(15, 0);
+                    ctx.lineTo(-10, -10);
+                    ctx.lineTo(-5, 0);
+                    ctx.lineTo(-10, 10);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    ctx.restore();
+
+                    if (hoveredShip?.id === ship.id) {
+                        ctx.strokeStyle = ship.color;
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.arc(screenX, screenY, 30, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+
+                    if (selectedShip?.id === ship.id) {
+                        ctx.strokeStyle = ship.color;
+                        ctx.lineWidth = 4;
+                        ctx.beginPath();
+                        ctx.arc(screenX, screenY, 35, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+                }
+            });
+        }
+
+        function getMousePosOnCanvas(e) {
+            const canvasRect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / canvasRect.width;
+            const scaleY = canvas.height / canvasRect.height;
+            
+            const x = (e.clientX - canvasRect.left) * scaleX;
+            const y = (e.clientY - canvasRect.top) * scaleY;
+            
+            return { x, y };
+        }
+
+        function handleCanvasMouseMove(e) {
+            const mousePos = getMousePosOnCanvas(e);
+
+            let found = null;
+            for (const ship of ships) {
+                const relX = ship.worldX - ownShip.worldX;
+                const relY = ship.worldY - ownShip.worldY;
+                const screenX = CONFIG.CANVAS_CENTER + relX * CONFIG.WORLD_TO_SCREEN_SCALE;
+                const screenY = CONFIG.CANVAS_CENTER - relY * CONFIG.WORLD_TO_SCREEN_SCALE;  // Reverse Y-axis
+
+                const dx = screenX - mousePos.x;
+                const dy = screenY - mousePos.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < 30) {
+                    found = ship;
+                    break;
+                }
+            }
+
+            hoveredShip = found;
+        }
+
+        function handleCanvasMouseLeave() {
+            hoveredShip = null;
+        }
+
+        function handleCanvasClick(e) {
+            const mousePos = getMousePosOnCanvas(e);
+
+            let clickedShip = null;
+            for (const ship of ships) {
+                const relX = ship.worldX - ownShip.worldX;
+                const relY = ship.worldY - ownShip.worldY;
+                const screenX = CONFIG.CANVAS_CENTER + relX * CONFIG.WORLD_TO_SCREEN_SCALE;
+                const screenY = CONFIG.CANVAS_CENTER - relY * CONFIG.WORLD_TO_SCREEN_SCALE;  // Reverse Y-axis
+
+                const dx = screenX - mousePos.x;
+                const dy = screenY - mousePos.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < 30) {
+                    clickedShip = ship;
+                    break;
+                }
+            }
+
+            if (clickedShip) {
+                if (selectedShip?.id === clickedShip.id) {
+                    selectedShip = null;
+                    hideAnalysis();
+                } else {
+                    selectedShip = clickedShip;
+                    showAnalysis(clickedShip);
+                }
+                e.stopPropagation();
+            }
+        }
+
+        function handleDocumentClick(e) {
+            // Only deselect if clicking outside specific areas
+            if (!e.target.closest('#mapCanvas') &&
+                !e.target.closest('.btn') &&
+                !e.target.closest('.analysis-section') &&
+                !e.target.closest('.rag-section') &&
+                !e.target.closest('.manual-input-dialog') &&
+                !e.target.closest('.dialog-overlay') &&
+                !e.target.closest('.agent-btn')) {
+                if (selectedShip) {
+                    selectedShip = null;
+                    hideAnalysis();
+                }
+            }
+        }
+
+        function showAnalysis(ship) {
+            const relX = ship.worldX - ownShip.worldX;
+            const relY = ship.worldY - ownShip.worldY;
+            const distanceNM = ship.distanceToOwnShip / CONFIG.METERS_PER_NAUTICAL_MILE;
+            const vhfInfo = VHF_CALLSIGNS[ship.id];
+
+            // Display AI recommendations and update AI Agent status
+            const suggestionDiv = document.getElementById('aiSuggestion');
+            const aiAgentStatus = document.getElementById('aiAgentStatus');
+            const agentActionButtons = document.getElementById('agentActionButtons');
+
+            if (ship.status === 'safe') {
+                // Safe status (gray ships) don't show recommendations
+                suggestionDiv.innerHTML = `
+                    <div class="empty-state" style="justify-content: center; height: 100%; gap: 10px;">
+                        <div style="font-size: 11px; color: #888; text-align: center;">
+                            <i class="fas fa-lightbulb"></i><br>
+                            AI agent will provide navigation recommendations<br>
+                            when a vessel enters the safety zone
+                        </div>
+                    </div>
+                `;
+                aiAgentStatus.textContent = 'STANDBY';
+                aiAgentStatus.style.background = 'rgba(255, 255, 255, 0.2)';
+                agentActionButtons.style.display = 'none';
+            } else if (ship.aiSuggestion) {
+                suggestionDiv.innerHTML = ship.aiSuggestion;
+                aiAgentStatus.textContent = 'ACTIVE';
+                aiAgentStatus.style.background = 'rgba(68, 221, 136, 0.3)';
+                agentActionButtons.style.display = 'flex';  // Show action buttons
+            } else {
+                // Waiting for analysis
+                suggestionDiv.innerHTML = `
+                    <div style="padding: 20px; text-align: center;">
+                        <i class="fas fa-spinner fa-spin" style="font-size: 24px; color: #667eea; margin-bottom: 10px;"></i>
+                        <div style="font-size: 12px; color: #B0B0B0;">
+                            AI Agent analyzing situation...<br>
+                            <span style="font-size: 10px; color: #888;">Processing VHF communication and vessel data</span>
+                        </div>
+                    </div>
+                `;
+                aiAgentStatus.textContent = 'ANALYZING';
+                aiAgentStatus.style.background = 'rgba(255, 215, 0, 0.3)';
+                agentActionButtons.style.display = 'none';
+            }
+
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('analysisPanel').classList.add('active');
+
+            document.getElementById('shipTitle').innerHTML = `
+                <i class="fas fa-ship"></i> ${ship.name} Alert
+                <span class="operator-badge">👨‍✈️ OPERATOR CONSOLE</span>
+            `;
+            document.getElementById('shipId').textContent = ship.id;
+            document.getElementById('shipName').textContent = ship.name;
+            document.getElementById('shipDistance').textContent = `${distanceNM.toFixed(2)} nm`;
+            document.getElementById('shipCourse').textContent = `${(ship.angle * 180 / Math.PI).toFixed(0)}°`;
+            document.getElementById('shipSpeed').textContent = `${ship.knotsSpeed.toFixed(1)} knots`;
+            const relXnm = relX / CONFIG.METERS_PER_NAUTICAL_MILE;
+            const relYnm = relY / CONFIG.METERS_PER_NAUTICAL_MILE;
+            document.getElementById('shipPosition').textContent = `(${relXnm.toFixed(2)}, ${relYnm.toFixed(2)}) nm`;
+            // VHF Info (vhfInfo already declared at function start)
+            if (vhfInfo) {
+                document.getElementById('vhfCall').textContent = `Call Sign: ${vhfInfo.callSign}`;
+                document.getElementById('vhfStatus').textContent = `MMSI: ${vhfInfo.mmsi}`;
+                document.getElementById('vhfLastMsg').textContent = `Last: ${ship.lastVHFMessage}`;
+            }
+
+            // Dialogue History
+            const dialogueDiv = document.getElementById('dialogueHistory');
+            dialogueDiv.innerHTML = ship.dialogueHistory.map(d => {
+                let messageClass = 'other';
+                let speakerIcon = '📡';
+                if (d.speakerType === 'OWN_SHIP') {
+                    messageClass = 'own';
+                    speakerIcon = '🚢';
+                } else if (d.speakerType === 'AGENT') {
+                    messageClass = 'agent';
+                    speakerIcon = '🤖';
+                } else if (d.speakerType === 'OPERATOR') {
+                    messageClass = 'operator';
+                    speakerIcon = '👨‍✈️';
+                } else {
+                    speakerIcon = '⚓';
+                }
+
+                return `<div class="dialogue-message ${messageClass}">
+                    <div class="dialogue-turn">
+                        <span class="speaker-icon">${speakerIcon}</span>
+                        [${d.time}] ${d.speaker}:
+                    </div>
+                    ${d.message}
+                </div>`;
+            }).join('');
+
+            // Auto-scroll to latest message
+            setTimeout(() => {
+                if (dialogueDiv.lastElementChild) {
+                    dialogueDiv.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            }, 100);
+
+            // Alert Level
+            const alertLevel = document.getElementById('alertLevel');
+
+            if (ship.status === 'danger') {
+                alertLevel.className = 'alert-level danger';
+                alertLevel.textContent = '🔴 Danger';
+            } else if (ship.status === 'clear') {
+                alertLevel.className = 'alert-level clear';
+                alertLevel.textContent = '🟢 Clear';
+            } else if (ship.status === 'fuzzy') {
+                alertLevel.className = 'alert-level fuzzy';
+                alertLevel.textContent = '🟡 Unclear';
+            } else if (ship.status === 'safe') {
+                // Monitoring status (outside safety zone)
+                alertLevel.className = 'alert-level';
+                alertLevel.style.background = 'rgba(128, 128, 128, 0.1)';
+                alertLevel.style.color = '#808080';
+                alertLevel.textContent = '⚪ Monitoring';
+            }
+
+            // RAG Content - Only show for vessels in alert zone
+            if (ship.status !== 'safe') {
+                updateRAGContent(ship);
+            } else {
+                // For safe status, show placeholder
+                document.getElementById('ragContent').innerHTML =
+                    `<div class="empty-state" style="justify-content: flex-start; height: auto; gap: 10px;">
+                        <div style="font-size: 11px; color: #888;">
+                            <i class="fas fa-info-circle"></i> COLREGs analysis available when vessel enters safety zone
+                        </div>
+                    </div>`;
+            }
+        }
+
+        function hideAnalysis() {
+            document.getElementById('emptyState').style.display = 'flex';
+            document.getElementById('analysisPanel').classList.remove('active');
+
+            // Reset AI recommendation area
+            document.getElementById('aiSuggestion').innerHTML = `
+                <div class="empty-state" style="justify-content: center; height: 100%; gap: 10px;">
+                    <div style="font-size: 11px; color: #888; text-align: center;">
+                        <i class="fas fa-lightbulb"></i><br>
+                        AI agent will provide navigation recommendations<br>
+                        when a vessel enters the safety zone
+                    </div>
+                </div>
+            `;
+            document.getElementById('aiAgentStatus').textContent = 'STANDBY';
+            document.getElementById('aiAgentStatus').style.background = 'rgba(255, 255, 255, 0.2)';
+            document.getElementById('agentActionButtons').style.display = 'none';  // Hide buttons
+
+            // Reset RAG content
+            document.getElementById('ragContent').innerHTML =
+                `<div class="empty-state" style="justify-content: flex-start; height: auto; gap: 10px;">
+                    <div style="font-size: 11px; color: #888;">
+                        <i class="fas fa-book"></i> Relevant maritime regulations will be displayed here
+                    </div>
+                </div>`;
+        }
+
+        // AI-driven dynamic COLREGs Reference Database
+        async function updateRAGContent(ship) {
+            const ragContent = document.getElementById('ragContent');
+
+            // Show loading state while AI analyzes
+            ragContent.innerHTML = `
+                <div style="padding: 20px; text-align: center;">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 20px; color: #00B4CC; margin-bottom: 10px;"></i>
+                    <div style="font-size: 11px; color: #B0B0B0;">
+                        AI Agent analyzing encounter geometry<br>
+                        <span style="font-size: 10px; color: #888;">Selecting relevant COLREGs rules...</span>
+                    </div>
+                </div>
+            `;
+
+            // Calculate encounter geometry
+            const relX = ship.worldX - ownShip.worldX;
+            const relY = ship.worldY - ownShip.worldY;
+            const distanceNM = ship.distanceToOwnShip / CONFIG.METERS_PER_NAUTICAL_MILE;
+
+            // Calculate relative bearing
+            const bearingRad = Math.atan2(relY, relX);
+            const relativeBearing = ((bearingRad - ownShip.angle) * 180 / Math.PI + 360) % 360;
+
+            // Calculate aspect angle (how the target sees us)
+            const aspectAngle = ((ownShip.angle - ship.angle) * 180 / Math.PI + 360) % 360;
+
+            // Generate AI-driven COLREGs selection
+            const ragHTML = await generateAIDrivenRAGContent(ship, distanceNM, relativeBearing, aspectAngle);
+
+            if (ragHTML) {
+                ragContent.innerHTML = ragHTML;
+            } else {
+                // Fallback to basic static content
+                generateFallbackRAGContent(ship, ragContent);
+            }
+        }
+
+        // AI Agent determines relevant COLREGs rules based on encounter geometry
+        async function generateAIDrivenRAGContent(ship, distanceNM, relativeBearing, aspectAngle) {
+            const vhfInfo = VHF_CALLSIGNS[ship.id];
+
+            const systemPrompt = `You are a maritime COLREGs expert AI analyzing a ship encounter situation.
+Your task is to identify the 3-4 most relevant COLREGs rules for this specific encounter.
+
+Available COLREGs Rules Database:
+1. Rule 13: Overtaking - Vessel overtaking must keep clear
+2. Rule 14: Head-on Situation - Both vessels alter course to starboard
+3. Rule 15: Crossing Situation - Give-way and stand-on vessel responsibilities
+4. Rule 7: Risk of Collision - Proper use of all available means
+5. Rule 8: Action to Avoid Collision - Positive and timely action
+6. Rule 17: Action by Stand-on Vessel - Maintain course and speed
+7. Rule 34: Maneuvering and Warning Signals - Sound and light signals
+8. Rule 19: Restricted Visibility - Special precautions
+
+Current Encounter Situation:
+- Target Vessel: ${vhfInfo.callSign}
+- Distance: ${distanceNM.toFixed(2)} nm
+- Own Ship Course: ${(ownShip.angle * 180 / Math.PI).toFixed(0)}°
+- Own Ship Speed: ${ownShip.knotsSpeed.toFixed(1)} knots
+- Target Course: ${(ship.angle * 180 / Math.PI).toFixed(0)}°
+- Target Speed: ${ship.knotsSpeed.toFixed(1)} knots
+- Relative Bearing: ${relativeBearing.toFixed(0)}° (from own ship's bow)
+- Aspect Angle: ${aspectAngle.toFixed(0)}°
+- Communication Status: ${ship.status === 'clear' ? 'Clear' : ship.status === 'fuzzy' ? 'Uncertain' : 'Danger'}
+
+Analyze the encounter geometry and determine:
+1. What type of encounter is this? (Overtaking / Head-on / Crossing / Other)
+2. Which 3-4 COLREGs rules are MOST relevant for this specific situation?
+3. Which rule is the PRIMARY basis for navigation decisions?
+
+Respond in JSON format:
+{
+  "encounterType": "type of encounter",
+  "primaryRule": "Rule number and name",
+  "relevantRules": ["Rule X: Name", "Rule Y: Name", "Rule Z: Name"],
+  "reasoning": "Brief explanation of why these rules apply"
+}`;
+
+            const prompt = `Analyze this maritime encounter and identify the most relevant COLREGs rules.`;
+
+            try {
+                const apiResponse = await callGeminiAPI(prompt, systemPrompt, 'COLREGs Agent');
+                if (!apiResponse) return null;
+
+                // Parse JSON response
+                let analysis;
+                try {
+                    // Try to extract JSON from response
+                    const jsonMatch = apiResponse.match(/\{[\s\S]*\}/);
+                    if (jsonMatch) {
+                        analysis = JSON.parse(jsonMatch[0]);
+                    } else {
+                        return null;
+                    }
+                } catch (e) {
+                    console.error('Failed to parse COLREGs analysis:', e);
+                    return null;
+                }
+
+                // Generate HTML based on AI analysis
+                let html = `
+                    <div style="background: rgba(102, 126, 234, 0.1); padding: 8px; border-radius: 4px; margin-bottom: 10px; font-size: 11px;">
+                        <strong style="color: #667eea;">🤖 AI-Driven COLREGs Analysis</strong><br>
+                        <span style="font-size: 10px; color: #888;">Encounter Type: ${analysis.encounterType || 'Analyzing...'}</span><br>
+                        <span style="font-size: 10px; color: #888; font-style: italic;">${analysis.reasoning || ''}</span>
+                    </div>
+                `;
+
+                // Add primary rule first
+                if (analysis.primaryRule) {
+                    const ruleKey = getRuleKeyFromName(analysis.primaryRule);
+                    if (ruleKey && COLREGS_RULES[ruleKey]) {
+                        const rule = COLREGS_RULES[ruleKey];
+                        html += `
+                            <div class="rag-item" style="border-color: rgba(102, 126, 234, 0.5);">
+                                <div class="rag-rule" style="color: #667eea;">🎯 ${rule.rule} [Primary Basis]</div>
+                                <div class="rag-description">${rule.description}</div>
+                                <div class="rag-example">${rule.details.join('<br>')}</div>
+                            </div>
+                        `;
+                    }
+                }
+
+                // Add other relevant rules
+                if (analysis.relevantRules && Array.isArray(analysis.relevantRules)) {
+                    for (const ruleName of analysis.relevantRules) {
+                        if (ruleName === analysis.primaryRule) continue; // Skip if already added
+
+                        const ruleKey = getRuleKeyFromName(ruleName);
+                        if (ruleKey && COLREGS_RULES[ruleKey]) {
+                            const rule = COLREGS_RULES[ruleKey];
+                            html += `
+                                <div class="rag-item">
+                                    <div class="rag-rule">${rule.rule} [Supporting Rule]</div>
+                                    <div class="rag-description">${rule.description}</div>
+                                    <div class="rag-example">${rule.details.join('<br>')}</div>
+                                </div>
+                            `;
+                        }
+                    }
+                }
+
+                return html;
+
+            } catch (error) {
+                console.error('COLREGs AI Analysis Error:', error);
+                return null;
+            }
+        }
+
+        // Map rule names to keys in COLREGS_RULES object
+        function getRuleKeyFromName(ruleName) {
+            if (!ruleName) return null;
+            const nameUpper = ruleName.toUpperCase();
+
+            if (nameUpper.includes('OVERTAKING') || nameUpper.includes('RULE 13')) return 'OVERTAKE';
+            if (nameUpper.includes('STAND-ON') || nameUpper.includes('RULE 17')) return 'STAND_ON_VESSEL';
+            if (nameUpper.includes('RISK') || nameUpper.includes('RULE 7')) return 'RISK_ASSESSMENT';
+            if (nameUpper.includes('COMMUNICATION') || nameUpper.includes('SIGNAL') || nameUpper.includes('RULE 34')) return 'COMMUNICATION';
+
+            return null;
+        }
+
+        // Fallback static content when AI is unavailable
+        function generateFallbackRAGContent(ship, ragContent) {
+            let html = `
+                <div style="background: rgba(102, 126, 234, 0.1); padding: 8px; border-radius: 4px; margin-bottom: 10px; font-size: 11px;">
+                    <strong style="color: #667eea;">📊 Dynamic Information Database Access</strong><br>
+                    <span style="font-size: 10px; color: #888;">Real-time AIS Data | VHF Communication Analysis | Behavior Match Assessment</span>
+                </div>
+            `;
+
+            // Show overtaking rule
+            const overtake = COLREGS_RULES['OVERTAKE'];
+            html += `
+                <div class="rag-item" style="border-color: rgba(102, 126, 234, 0.5);">
+                    <div class="rag-rule" style="color: #667eea;">🎯 ${overtake.rule} [Main Basis]</div>
+                    <div class="rag-description">${overtake.description}</div>
+                    <div class="rag-example">${overtake.details.join('<br>')}</div>
+                </div>
+            `;
+
+            // Show risk assessment
+            const risk = COLREGS_RULES['RISK_ASSESSMENT'];
+            html += `
+                <div class="rag-item">
+                    <div class="rag-rule">${risk.rule}</div>
+                    <div class="rag-description">${risk.description}</div>
+                    <div class="rag-example">${risk.details.join('<br>')}</div>
+                </div>
+            `;
+
+            ragContent.innerHTML = html;
+        }
+
+        function updateStats() {
+            // Count ships in different states
+            document.getElementById('dangerCount').textContent = ships.filter(s => s.status === 'danger').length;
+            document.getElementById('clearCount').textContent = ships.filter(s => s.status === 'clear').length;
+            document.getElementById('fuzzyCount').textContent = ships.filter(s => s.status === 'fuzzy').length;
+        }
+
+        // ========== Button Handler Functions ==========
+        function stopQuery() {
+            if (!selectedShip) return;
+
+            console.log(`✓ Operator confirmed: Information clear for ${selectedShip.name}`);
+            selectedShip.status = 'clear';
+            selectedShip.color = '#44DD88';
+
+            const vhfInfo = VHF_CALLSIGNS[selectedShip.id];
+            const message = `Roger, ${vhfInfo.callSign}. Information confirmed clear. Proceeding with safe overtaking. Over.`;
+            selectedShip.addDialogue('OWN_SHIP', message);
+
+            showAnalysis(selectedShip);
+            updateStats();
+        }
+
+        function showManualInput() {
+            if (!selectedShip) {
+                alert('Please select a ship first');
+                return;
+            }
+
+            // Save the currently selected ship reference
+            window.manualInputTargetShip = selectedShip;
+            window.processedVHFMessage = null;
+            window.manualInputOriginalText = null;
+
+            // Display target ship info
+            const vhfInfo = VHF_CALLSIGNS[selectedShip.id];
+            document.getElementById('dialogTargetShip').textContent = `→ ${vhfInfo?.callSign || selectedShip.name}`;
+
+            // Reset dialog state
+            document.getElementById('manualInputText').value = '';
+            document.getElementById('aiProcessingArea').style.display = 'none';
+            document.getElementById('initialButtons').style.display = 'flex';
+            document.getElementById('confirmButtons').style.display = 'none';
+
+            // Show dialog
+            document.getElementById('dialogOverlay').classList.add('active');
+            document.getElementById('manualInputDialog').classList.add('active');
+            document.getElementById('manualInputText').focus();
+        }
+
+        function hideManualInput() {
+            document.getElementById('dialogOverlay').classList.remove('active');
+            document.getElementById('manualInputDialog').classList.remove('active');
+        }
+
+        async function sendManualInput() {
+            const inputText = document.getElementById('manualInputText').value.trim();
+            if (!inputText) {
+                alert('Please enter a message');
+                return;
+            }
+
+            const targetShip = window.manualInputTargetShip;
+            if (!targetShip) {
+                alert('Target ship reference lost. Please try again.');
+                hideManualInput();
+                return;
+            }
+
+            // Save original input
+            window.manualInputOriginalText = inputText;
+
+            console.log(`👨‍✈️ Operator manual input: ${inputText}`);
+
+            // Hide initial buttons
+            document.getElementById('initialButtons').style.display = 'none';
+
+            // Show processing area
+            document.getElementById('aiProcessingArea').style.display = 'block';
+            document.getElementById('processingStatus').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing operator input...';
+            document.getElementById('processingResult').textContent = '';
+
+            // Step 1: Process manual input through own ship AI agent
+            const vhfInfo = VHF_CALLSIGNS[targetShip.id];
+            const distanceNM = targetShip.distanceToOwnShip / CONFIG.METERS_PER_NAUTICAL_MILE;
+
+            // Generate VHF message from manual input using AI agent
+            const vhfMessage = await processManualInputThroughAgent(inputText, targetShip, vhfInfo, distanceNM);
+
+            console.log(`🤖 Own Ship Agent processed input: ${vhfMessage}`);
+
+            // Update status
+            document.getElementById('processingStatus').innerHTML = '<i class="fas fa-check-circle"></i> AI Agent Processing Complete';
+
+            // Display processed message with typewriter effect
+            const resultDiv = document.getElementById('processingResult');
+            resultDiv.textContent = '';
+            typeWriterEffect(resultDiv, vhfMessage, 20, () => {
+                // Show confirm buttons after typewriter completes
+                document.getElementById('confirmButtons').style.display = 'flex';
+            });
+
+            // Save processed message for later use
+            window.processedVHFMessage = vhfMessage;
+        }
+
+        async function confirmAndSend() {
+            const targetShip = window.manualInputTargetShip;
+            const originalInput = window.manualInputOriginalText;
+            const vhfMessage = window.processedVHFMessage;
+
+            if (!targetShip || !originalInput || !vhfMessage) {
+                alert('Missing required data. Please try again.');
+                hideManualInput();
+                return;
+            }
+
+            // Mark as manual intervention status (yellow)
+            targetShip.status = 'fuzzy';
+            targetShip.color = '#FFD700';
+
+            // Step 1: Add operator's original input to dialogue (shows human guidance)
+            targetShip.addDialogue('OPERATOR', `[Operator Guidance] ${originalInput}`);
+
+            // Step 2: Add the AI-processed VHF message to dialogue
+            targetShip.addDialogue('OWN_SHIP', vhfMessage);
+
+            // IMPORTANT: Ensure target ship remains selected
+            selectedShip = targetShip;
+
+            // Close dialog
+            hideManualInput();
+
+            // Update display
+            showAnalysis(targetShip);
+            updateStats();
+
+            // Step 3: Send processed VHF message to target ship and get response
+            setTimeout(async () => {
+                const vhfInfo = VHF_CALLSIGNS[targetShip.id];
+                const distanceNM = targetShip.distanceToOwnShip / CONFIG.METERS_PER_NAUTICAL_MILE;
+                const response = await targetShip.generateTargetShipResponse(vhfMessage, vhfInfo, distanceNM);
+
+                if (response) {
+                    console.log(`📻 ${vhfInfo.callSign} → Own Ship: Response to manual input (${response.type.toUpperCase()})`);
+                    targetShip.addDialogue('TARGET_SHIP', response.message);
+
+                    // Generate new AI suggestion based on the response
+                    setTimeout(() => {
+                        targetShip.generateAISuggestion(response.type);
+                    }, 1000);
+                } else {
+                    // Fallback simple response
+                    const fallbackResponse = `${vhfInfo.callSign} roger. Acknowledged your message. Over.`;
+                    targetShip.addDialogue('TARGET_SHIP', fallbackResponse);
+                }
+
+                // Update display if this ship is still selected
+                if (selectedShip === targetShip) {
+                    showAnalysis(targetShip);
+                }
+            }, 2000);
+        }
+
+        function resetManualInput() {
+            // Allow user to edit the input again
+            document.getElementById('aiProcessingArea').style.display = 'none';
+            document.getElementById('initialButtons').style.display = 'flex';
+            document.getElementById('confirmButtons').style.display = 'none';
+            document.getElementById('manualInputText').focus();
+        }
+
+        function safeHideManualInput() {
+            // Safe close that cleans up references
+            window.manualInputTargetShip = null;
+            window.processedVHFMessage = null;
+            window.manualInputOriginalText = null;
+            hideManualInput();
+        }
+
+        // Typewriter effect for displaying AI-processed message
+        function typeWriterEffect(element, text, speed, callback) {
+            let i = 0;
+            element.textContent = '';
+
+            function type() {
+                if (i < text.length) {
+                    element.textContent += text.charAt(i);
+                    i++;
+                    setTimeout(type, speed);
+                } else if (callback) {
+                    callback();
+                }
+            }
+
+            type();
+        }
+
+        // Process manual operator input through own ship AI agent to generate proper VHF message
+        async function processManualInputThroughAgent(manualInput, ship, vhfInfo, distanceNM) {
+            const systemPrompt = `You are an AI navigation assistant aboard Own Ship.
+The operator has provided a manual instruction: "${manualInput}"
+
+Your task is to convert this instruction into a professional VHF radio message to be sent to target vessel ${vhfInfo.callSign}.
+
+Current Situation:
+- Target Vessel: ${vhfInfo.callSign} (MMSI: ${vhfInfo.mmsi})
+- Distance: ${distanceNM.toFixed(2)} nautical miles
+- Scenario: Overtaking situation
+- Target Course: ${(ship.angle * 180 / Math.PI).toFixed(0)}°
+- Target Speed: ${ship.knotsSpeed.toFixed(1)} knots
+
+Convert the operator's instruction into proper maritime VHF communication format following these guidelines:
+1. Use standard VHF protocol (call signs, "Over", etc.)
+2. Be clear and concise
+3. Include relevant positional/navigational information
+4. Follow COLREGs communication standards
+
+Generate ONLY the VHF message to be transmitted. Do not include explanations.`;
+
+            const prompt = `Operator instruction: "${manualInput}"
+
+Generate the VHF radio message:`;
+
+            try {
+                const apiResponse = await callGeminiAPI(prompt, systemPrompt, 'Own Ship Agent');
+                if (apiResponse) {
+                    // Clean up the response
+                    let vhfMessage = apiResponse.trim();
+
+                    // Ensure it includes call sign if not present
+                    if (!vhfMessage.includes(vhfInfo.callSign)) {
+                        vhfMessage = `${vhfInfo.callSign}, this is Own Ship. ${vhfMessage}`;
+                    }
+
+                    // Ensure it ends with "Over." if not present
+                    if (!vhfMessage.toLowerCase().includes('over')) {
+                        vhfMessage += ' Over.';
+                    }
+
+                    return vhfMessage;
+                } else {
+                    // Fallback: use manual input directly with proper formatting
+                    return `${vhfInfo.callSign}, this is Own Ship. ${manualInput}. Over.`;
+                }
+            } catch (error) {
+                console.error('Own Ship Agent processing error:', error);
+                // Fallback: use manual input directly with proper formatting
+                return `${vhfInfo.callSign}, this is Own Ship. ${manualInput}. Over.`;
+            }
+        }
+
+        function executeRecommendation() {
+            if (!selectedShip) return;
+
+            console.log(`⚡ Executing AI recommendation for ${selectedShip.name}`);
+
+            const vhfInfo = VHF_CALLSIGNS[selectedShip.id];
+            const message = `${vhfInfo.callSign}, Own Ship executing recommended maneuver. Overtaking on starboard side. Over.`;
+            selectedShip.addDialogue('OWN_SHIP', message);
+
+            // Mark as yellow after execution (monitoring)
+            selectedShip.status = 'fuzzy';
+            selectedShip.color = '#FFD700';
+
+            showAnalysis(selectedShip);
+            updateStats();
+
+            // Generate target ship acknowledgment
+            setTimeout(async () => {
+                const distanceNM = selectedShip.distanceToOwnShip / CONFIG.METERS_PER_NAUTICAL_MILE;
+                const response = await selectedShip.generateTargetShipResponse(message, vhfInfo, distanceNM);
+
+                if (response) {
+                    console.log(`📻 ${vhfInfo.callSign} → Own Ship: Acknowledgment (${response.type.toUpperCase()})`);
+                    selectedShip.addDialogue('TARGET_SHIP', response.message);
+                } else {
+                    // Fallback response
+                    const fallbackResponse = `${vhfInfo.callSign} roger. Proceeding as planned. Over.`;
+                    selectedShip.addDialogue('TARGET_SHIP', fallbackResponse);
+                }
+
+                if (selectedShip === window.selectedShip) {
+                    showAnalysis(selectedShip);
+                }
+            }, 2000);
+        }
+
+        window.addEventListener('DOMContentLoaded', init);
+        window.addEventListener('resize', () => {
+            if (canvas) {
+                canvas.width = CONFIG.MAP_SIZE;
+                canvas.height = CONFIG.MAP_SIZE;
+            }
+        });
+    </script>
+</body>
+</html>
